@@ -2,25 +2,30 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Live Viewer Lokasi Teman</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <title>Share Lokasi - Jambi</title>
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f0f0; }
-    #map { height: 95vh; width: 100%; }
-    h2 { text-align:center; margin:10px 0; color:#333; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #f5f5f5;
+    }
+    h2 { color: #333; }
+    p { font-size: 18px; }
+    #status { font-weight: bold; margin-top: 20px; color: #007BFF; }
   </style>
 </head>
 <body>
-  <h2>Live Locations Teman</h2>
-  <div id="map"></div>
+  <h2>Share Lokasi — Provinsi Jambi</h2>
+  <p id="status">Menunggu...</p>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK dari CDN -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
+    const statusEl = document.getElementById('status');
+
     // ======= Firebase Config milikmu =======
     const firebaseConfig = {
       apiKey: "AIzaSyBffrwvdzVsGcFgjvhvc1FbeaXXJ43DcF8",
@@ -32,71 +37,47 @@
       appId: "1:1035321216653:web:cefac47b06ef39a90adcc4",
       measurementId: "G-G4PJ707CD6"
     };
-    // ================================================
+    // =======================================
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Setup peta Leaflet
-    const map = L.map('map').setView([0,0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    const markers = {}; // Simpan marker tiap visitor
-
-    // Fungsi generate warna acak konsisten untuk tiap visitor
-    function getColor(id){
-      let hash = 0;
-      for(let i=0;i<id.length;i++){ hash = id.charCodeAt(i)+((hash<<5)-hash); }
-      const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-      return "#"+("00000"+c).slice(-6);
+    // Buat visitorId stabil menggunakan localStorage
+    let visitorId = localStorage.getItem('visitorId');
+    if(!visitorId){
+      visitorId = 'v_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('visitorId', visitorId);
     }
 
-    // Listen realtime database
-    const ref = db.ref('locations');
-    ref.on('value', snapshot => {
-      const data = snapshot.val() || {};
+    if (!navigator.geolocation) {
+      statusEl.textContent = 'Browser tidak mendukung Geolocation.';
+    } else {
+      statusEl.textContent = 'Mencari lokasi…';
+      navigator.geolocation.getCurrentPosition(sendPosition, err => {
+        statusEl.textContent = 'Gagal: ' + err.message;
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    }
 
-      // Hapus marker lama
-      Object.keys(markers).forEach(k => {
-        map.removeLayer(markers[k]);
-        delete markers[k];
+    function sendPosition(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+      const ts = Date.now();
+
+      // Simpan ke database Firebase
+      db.ref('locations/' + visitorId).set({
+        lat: lat,
+        lon: lon,
+        accuracy: acc,
+        ts: ts,
+        label: visitorId
+      }).then(()=> {
+        statusEl.textContent = 'Lokasi dikirim. Terima kasih.';
+      }).catch(e=>{
+        statusEl.textContent = 'Gagal kirim: ' + e.message;
       });
-
-      // Tambah marker baru
-      Object.keys(data).forEach(id => {
-        const item = data[id];
-        if (!item || !item.lat || !item.lon) return;
-
-        const color = getColor(id);
-        const icon = L.divIcon({
-          className: "custom-marker",
-          html: `<div style="background:${color};width:20px;height:20px;border-radius:50%;border:2px solid #fff;"></div>`,
-          iconSize: [24,24],
-          iconAnchor: [12,12]
-        });
-
-        const marker = L.marker([item.lat, item.lon], {icon: icon})
-          .addTo(map)
-          .bindPopup(`
-            <b>ID:</b> ${id}<br>
-            <b>Accuracy:</b> ±${item.accuracy} m<br>
-            <b>Timestamp:</b> ${new Date(item.ts).toLocaleString()}
-          `);
-
-        markers[id] = marker;
-      });
-
-      // Set view ke semua marker
-      const ids = Object.keys(data);
-      if(ids.length){
-        const group = new L.featureGroup(ids.map(id=>markers[id]));
-        map.fitBounds(group.getBounds().pad(0.3));
-      }
-    });
+    }
   </script>
 </body>
 </html>
