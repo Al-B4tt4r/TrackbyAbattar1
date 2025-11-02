@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Share Lokasi</title>
+  <title>Share Lokasi - Live Tracking Jambi</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -16,10 +16,10 @@
   </style>
 </head>
 <body>
-  <h2>Share Lokasi — Klik Allow</h2>
-  <p id="status">Menunggu...</p>
+  <h2>Share Lokasi — Provinsi Jambi (Live)</h2>
+  <p id="status">Menunggu izin lokasi...</p>
 
-  <!-- Firebase SDK dari CDN -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -39,37 +39,36 @@
     };
     // =======================================
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
+    // VisitorId tetap stabil (tidak berubah walau reload)
+    let visitorId = localStorage.getItem('visitorId');
+    if(!visitorId){
+      visitorId = 'v_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('visitorId', visitorId);
+    }
 
     if (!navigator.geolocation) {
       statusEl.textContent = 'Browser tidak mendukung Geolocation.';
     } else {
-      statusEl.textContent = 'Mencari lokasi…';
-      navigator.geolocation.getCurrentPosition(sendPosition, err => {
+      statusEl.textContent = 'Menunggu izin lokasi...';
+      navigator.geolocation.watchPosition(updatePosition, err => {
         statusEl.textContent = 'Gagal: ' + err.message;
-      }, { enableHighAccuracy: true, timeout: 10000 });
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
-    function sendPosition(pos) {
+    // Kirim lokasi secara realtime ke Firebase
+    function updatePosition(pos) {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = pos.coords.accuracy;
       const ts = Date.now();
 
-      // Buat ID unik tiap pengunjung
-      const visitorId = 'v_' + Math.random().toString(36).slice(2,9);
-
-      // Simpan ke database Firebase
-      db.ref('locations/' + visitorId).set({
-        lat: lat,
-        lon: lon,
-        accuracy: acc,
-        ts: ts,
-        label: visitorId
-      }).then(()=> {
-        statusEl.textContent = 'Lokasi dikirim. Terima kasih.';
+      db.ref('locations/' + visitorId).update({
+        lat, lon, accuracy: acc, ts, label: visitorId
+      }).then(()=>{
+        statusEl.textContent = `Lokasi dikirim (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
       }).catch(e=>{
         statusEl.textContent = 'Gagal kirim: ' + e.message;
       });
