@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Viewer Lokasi Teman</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin:0; padding:0; }
+    #map { height: 90vh; width: 100%; }
+    h2 { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>Live Locations Teman</h2>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // ======= GANTI DENGAN CONFIG FIREBASE PROJECT MU =======
+    const firebaseConfig = {
+      apiKey: "AIzaSyBffrwvdzVsGcFgjvhvc1FbeaXXJ43DcF8",
+      authDomain: "my-project-c0014.firebaseapp.com",
+      databaseURL: "https://my-project-c0014-default-rtdb.firebaseio.com",
+      projectId: "my-project-c0014",
+      storageBucket: "my-project-c0014.appspot.com",
+      messagingSenderId: "1035321216653",
+      appId: "1:1035321216653:web:cefac47b06ef39a90adcc4",
+      measurementId: "G-G4PJ707CD6"
+    };
+    // ================================================
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Setup peta Leaflet
+    const map = L.map('map').setView([0,0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const markers = {}; // Simpan marker tiap visitor
+
+    // Listen realtime database di /locations
+    const ref = db.ref('locations');
+    ref.on('value', snapshot => {
+      const data = snapshot.val() || {};
+
+      // Hapus marker lama
+      Object.keys(markers).forEach(k => {
+        map.removeLayer(markers[k]);
+        delete markers[k];
+      });
+
+      // Tambah marker baru
+      Object.keys(data).forEach(id => {
+        const item = data[id];
+        if (!item || !item.lat || !item.lon) return;
+
+        const marker = L.marker([item.lat, item.lon]).addTo(map)
+          .bindPopup(`${id}<br>Accuracy: ±${item.accuracy} m<br>${new Date(item.ts).toLocaleString()}`);
+        markers[id] = marker;
+      });
+
+      // Set view ke marker pertama (opsional)
+      const ids = Object.keys(data);
+      if (ids.length) {
+        const first = data[ids[0]];
+        map.setView([first.lat, first.lon], 13);
+      }
+    });
+  </script>
+</body>
+</html>
