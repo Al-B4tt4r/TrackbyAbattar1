@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS Tracking - AL</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+      color: #222;
+      padding: 20px;
+    }
+    h2 {
+      color: #000;
+    }
+    p {
+      font-size: 18px;
+      line-height: 1.4em;
+    }
+    .label {
+      font-weight: bold;
+      color: teal;
+    }
+  </style>
+</head>
+<body>
+  <h2>GPS Tracking - AL</h2>
+  <p><span class="label">Latitude:</span> <span id="lat">Menunggu...</span></p>
+  <p><span class="label">Longitude:</span> <span id="lon">Menunggu...</span></p>
+  <p><span class="label">Akurasi (m):</span> <span id="acc">-</span></p>
+  <p><span class="label">Waktu:</span> <span id="time">-</span></p>
+
+  <script>
+    function updateGPS() {
+      if (!navigator.geolocation) {
+        alert("Geolocation tidak didukung oleh browser ini.");
+        return;
+      }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(success, error, options);
+    }
+
+    function success(position) {
+      const lat = position.coords.latitude.toFixed(6);
+      const lon = position.coords.longitude.toFixed(6);
+      const acc = position.coords.accuracy.toFixed(0);
+      const waktu = new Date().toLocaleString('id-ID');
+
+      document.getElementById("lat").textContent = lat;
+      document.getElementById("lon").textContent = lon;
+      document.getElementById("acc").textContent = acc;
+      document.getElementById("time").textContent = waktu;
+
+      console.log(`Update GPS: ${lat}, ${lon}`);
+    }
+
+    function error(err) {
+      console.warn(`ERROR(${err.code}): ${err.message}`);
+    }
+
+    // 🔁 Auto-run saat halaman dibuka
+    updateGPS();
+
+    // ⏱️ Auto-refresh setiap 10 detik
+    setInterval(updateGPS, 10000);
+  </script>
+</body>
+</html>
